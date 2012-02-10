@@ -166,11 +166,20 @@ ClassBodyDeclaration: #empty
 ;
 
 InterfaceDeclaration:
-		INTERFACE_TK IDENTIFIER_TK ClassBody	{
+		Modifiers INTERFACE_TK IDENTIFIER_TK ExtendsDeclaration InterfaceBody	{
 			Parse::Java::Interface->new({
-				name => $_[2]
+                children => [@_[1, 2, 3, 4, 5]]
 			});
 		}
+;
+
+InterfaceBody:
+        OCB_TK InterfaceBodyDeclaration CCB_TK {
+        }
+;
+
+InterfaceBodyDeclaration: 
+    #empty { undef; }
 ;
 
 Modifier:
