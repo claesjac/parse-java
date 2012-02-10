@@ -19,6 +19,9 @@
 
 %{
 
+use 5.012;
+use warnings;
+
 use Carp qw(croak);
 
 use Parse::Java::Class;
@@ -31,17 +34,17 @@ use Parse::Java::Modifiers;
 use Parse::Java::PackageDecl;
 use Parse::Java::PrimitiveType::Boolean;
 use Parse::Java::PrimitiveType::Byte;
+use Parse::Java::PrimitiveType::Char;
 use Parse::Java::PrimitiveType::Double;
 use Parse::Java::PrimitiveType::Float;
-use Parse::Java::PrimitiveType::FloatingPointType;
 use Parse::Java::PrimitiveType::Int;
-use Parse::Java::PrimitiveType::IntegralType;
 use Parse::Java::PrimitiveType::Long;
 use Parse::Java::PrimitiveType::Short;
 use Parse::Java::PrimitiveType;
 use Parse::Java::ReferenceType;
 use Parse::Java::Token;
 use Parse::Java::Type;
+use Parse::Java::TypeArgument;
 use Parse::Java::TypeDecl;
 
 %}
@@ -82,51 +85,60 @@ ImportIdentifier:
         }
 ;
         
-/* Type referencing */
 Type:
-		PrimitiveType						{ $_[1]; }
-	|	ReferenceType						{ $_[1]; }
+        BasicType       { $_[1]; }
+    |   ReferenceType   { $_[1]; }
 ;
 
-PrimitiveType:
-		NumericType		{ $_[1]; }
-	|	BOOLEAN_TK		{ Parse::Java::PrimitiveType::Boolean->new({children => $_[1]}); }
-;
-
-NumericType:
-		IntegralType		{ $_[1]; }
-	|	FloatingPointType 	{ $_[1]; }
-;
-
-IntegralType:
-		BYTE_TK				{ Parse::Java::PrimitiveType::Byte->new({ children => $_[1] }); }
-	|	SHORT_TK			{ Parse::Java::PrimitiveType::Short->new({ children => $_[1] }); }
-	|	INT_TK				{ Parse::Java::PrimitiveType::Int->new({ children => $_[1] }); }
-	|	LONG_TK				{ Parse::Java::PrimitiveType::Long->new({ children => $_[1] }); }
-	|	CHAR_TK				{ Parse::Java::PrimitiveType::Char->new({ children => $_[1] }); }
-;
-
-FloatingPointType:
-		FLOAT_TK			{ Parse::Java::PrimitiveType::Float->new({ children => $_[1] }); }
-	|	DOUBLE_TK			{ Parse::Java::PrimitiveType::Double->new({ children => $_[1] }); }
+BasicType:
+        BYTE_TK     { Parse::Java::PrimitiveType::Byte->new({ children => [$_[1]] }) }
+    |   SHORT_TK    { Parse::Java::PrimitiveType::Short->new({ children => [$_[1]] }) }
+    |   CHAR_TK     { Parse::Java::PrimitiveType::Char->new({ children => [$_[1]] }) }
+    |   INT_TK      { Parse::Java::PrimitiveType::Int->new({ children => [$_[1]] }) }
+    |   LONG_TK     { Parse::Java::PrimitiveType::Long->new({ children => [$_[1]] }) }
+    |   FLOAT_TK    { Parse::Java::PrimitiveType::Float->new({ children => [$_[1]] }) }
+    |   DOUBLE_TK   { Parse::Java::PrimitiveType::Double->new({ children => [$_[1]] }) }
+    |   BOOLEAN_TK  { Parse::Java::PrimitiveType::Boolean->new({ children => [$_[1]] }) }
 ;
 
 /* Reference types */
+
 ReferenceType:
-		QualifiedIdentifier TypeArguments	{
-			Parse::Java::ReferenceType->new({
-				children	=> [ $_[1], $_[2] ],
-			})
-		}
-	|	QualifiedIdentifier					{
-			Parse::Java::ReferenceType->new({
-				children	=> [ $_[1] ],
-			});
-		}
+        Identifier TypeArguments OptionalReferenceTypeTail {
+            my @children = $_[1];
+            use Data::Dumper qw(Dumper);
+            say STDERR Dumper $_[2];
+            push @children, @{$_[2]} if $_[2];
+            push @children, @{$_[3]} if $_[3];
+            Parse::Java::ReferenceType->new({
+                children => \@children,
+            })
+        }
+;
+
+OptionalReferenceTypeTail:
+        OptionalReferenceTypeTail DOT_TK Identifier TypeArguments { 
+            my @types = $_[4] ? @{$_[4]} : ();
+            push @{$_[1]}, @_[2, 3], @types; $_[1] 
+        }
+    |   #empty
 ;
 
 TypeArguments:
-		LT_TK ReferenceType GT_TK			{ [ $_[2] ]; }
+        LT_TK { $_[0]->{expect_gt} = 1; } TypeArgumentList GT_TK { [$_[1], @{$_[3]}, $_[4]]; }
+    |   #empty { undef; }
+;
+
+TypeArgumentList:
+        TypeArgumentList COMMA_TK TypeArgument { push @{$_[1]}, @_[2, 3]; $_[1]; }        
+    |   TypeArgument { [$_[1]]; }
+;
+
+TypeArgument:
+        Type { Parse::Java::TypeArgument->new({ children => [ $_[1] ] }) }
+    |   REL_QM_TK EXTENDS_TK Type { Parse::Java::TypeArgument->new({ children => [@_[1, 2, 3]] }) }
+    |   REL_QM_TK SUPER_TK Type { Parse::Java::TypeArgument->new({ children => [@_[1, 2, 3]] }) }
+    |   REL_QM_TK { Parse::Java::TypeArgument->new({ children => [ $_[1] ] }) }
 ;
 
 /* Type declarations */
@@ -311,7 +323,7 @@ our %Separator = (
 	'[' => 'OSB_TK',
 	']' => 'CSB_TK',
 	';' => 'SC_TK',
-	',' => 'C_TK',
+	',' => 'COMMA_TK',
 	'.' => 'DOT_TK',
 );
 
@@ -514,6 +526,11 @@ sub _next_token {
 			return $Operator{$1}, _mk_token(Operator => $1);
 		};
 		
+        $self->{expect_gt} && s/^(>)// && do {
+            delete $self->{expect_gt};
+            return $Operator{$1}, _mk_token(Operator => $1);
+        };
+	    
 		s/^((?:[\+\-\*\/\&\|\^\%\!]|<{1,2}|>{1,3})=?)// && do {
 			return $Operator{$1}, _mk_token(Operator => $1);
 		};	
