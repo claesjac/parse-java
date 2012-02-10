@@ -1,0 +1,10 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Data::Dumper qw(Dumper);
+use Parse::Java;
+
+my $ast = Parse::Java->parse_file(shift);
+print Dumper($ast);
