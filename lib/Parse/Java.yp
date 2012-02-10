@@ -221,6 +221,7 @@ CompilationUnit:
             my @children;
             push @children, $_[1] if $_[1];
             push @children, @{$_[2]} if $_[2];
+            push @children, @{$_[3]} if $_[3];
             
 			Parse::Java::Document->new({
 			    children => \@children

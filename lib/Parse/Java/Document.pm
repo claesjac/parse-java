@@ -5,9 +5,19 @@ use warnings;
 
 use Carp qw(croak);
 
-use base qw(Class::Accessor);
+use base qw(Parse::Java::Node);
 
-__PACKAGE__->mk_accessors(qw(types package imports));
+sub package {
+    return shift->first_child_of_type("Parse::Java::PackageDecl");
+}
+
+sub imports {
+    return shift->children_with({isa => "Parse::Java::ImportDecl"});
+}
+
+sub types {
+    return shift->children_with({isa => "Parse::Java::TypeDecl"});
+}
 
 1;
 __END__

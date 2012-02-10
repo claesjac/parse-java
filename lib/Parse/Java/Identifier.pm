@@ -7,17 +7,11 @@ use Carp qw(croak);
 
 use base qw(Parse::Java::Node);
 
-use overload q{""} => \&as_string, fallback => 1;
+use overload q{""} => \&to_string, fallback => 1;
 
-sub identifier {
+sub to_string {
 	my $self = shift;
-	my @segments = grep { $_->isa('Parse::Java::Token::Identifier') } @{$self->children};;
-	return join(".", @segments);
-}
-
-sub as_string {
-	my $self = shift;
-	return $self->identifier;
+	return join "", map { $_->value } @{$self->children};
 }
 
 1;

@@ -5,44 +5,13 @@ use warnings;
 
 use Carp qw(croak);
 
-use base qw(Parse::Java::TypeDecl Parse::Java::LazyNode);
-
-__PACKAGE__->mk_accessors(qw(name extends implements));
-
-sub _load {
-	my $self = shift;
-	
-	return if $self->_loaded();
-	
-	my $iterator = $self->schild_iterator();
-	
-	LOAD_ITERATOR:
-	while (<$iterator>) {
-		if ($_->isa('Parse::Java::Token::Keyword') && $_->value eq 'class') {
-			my $name = <$iterator>;
-			$self->SUPER::set(name => $name);
-			next LOAD_ITERATOR;
-		}
-		if ($_->isa('Parse::Java::Token::Keyword') && $_->value eq 'extends') {
-			my $extends = <$iterator>;
-			$self->SUPER::set(extends => $extends);
-			next LOAD_ITERATOR;
-		}
-	}	
-	
-	$self->_loaded(1);
-}
+use base qw(Parse::Java::TypeDecl);
 
 sub name {
-	my $self = shift;
-	$self->_load();
-	return $self->SUPER::get("name");
+    shift->first_child_of_type("Parse::Java::Identifier");
 }
 
 sub extends {
-	my $self = shift;
-	$self->_load();
-	return $self->SUPER::get("extends");
 }
 
 1;

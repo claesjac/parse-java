@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
+use List::Util qw(first);
 
 use Parse::Java::Util::Iterator;
 
@@ -43,17 +44,21 @@ sub schild_iterator {
 	return Parse::Java::Util::Iterator->new($iterator);
 }
 
+sub first_child_of_type {
+    my ($self, $type) = @_;
+    return first { $_->isa($type) } @{$self->children};
+}
+
 sub children_with {
-	my $self = shift;
-	my %rules = @_;
+	my ($self, $rules) = @_;
 	
-	my $children = $self->children;
+	my @children = @{$self->children};
 	
-	if (exists $rules{isa}) {
-		@$children = grep { $_->isa($rules{isa}) } @$children;
+	if (exists $rules->{isa}) {
+		@children = grep { $_->isa($rules->{isa}) } @children;
 	}
 	
-	return $children;
+	return @children;
 }
 
 1;
