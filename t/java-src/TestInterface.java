@@ -1,2 +1,2 @@
-public interface TestInterface {
+public interface TestInterface extends MyOtherInterface {
 }

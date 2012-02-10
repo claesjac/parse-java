@@ -27,6 +27,7 @@ use Parse::Java::Element;
 use Parse::Java::Identifier;
 use Parse::Java::ImportDecl;
 use Parse::Java::Interface;
+use Parse::Java::Modifiers;
 use Parse::Java::PackageDecl;
 use Parse::Java::PrimitiveType::Boolean;
 use Parse::Java::PrimitiveType::Byte;
@@ -165,8 +166,17 @@ ClassBody:
 ClassBodyDeclaration: #empty
 ;
 
+InterfaceExtends:
+        EXTENDS_TK TypeList {
+            Parse::Java::Extends->new({
+                children => [$_[1], @{$_[2]}]
+            });
+        }
+    |   #empty
+;
+
 InterfaceDeclaration:
-		Modifiers INTERFACE_TK IDENTIFIER_TK ExtendsDeclaration InterfaceBody	{
+		Modifiers INTERFACE_TK IDENTIFIER_TK InterfaceExtends InterfaceBody	{
 			Parse::Java::Interface->new({
                 children => [@_[1, 2, 3, 4, 5]]
 			});
@@ -182,13 +192,20 @@ InterfaceBodyDeclaration:
     #empty { undef; }
 ;
 
-Modifier:
-		MODIFIER_TK		{ $_[1]; }
+ModifierList:
+        ModifierList MODIFIER_TK { 
+            push @{$_[1]}, $_[2]; 
+            $_[1]; 
+        }
+    |   #empty
 ;
-
+    
 Modifiers:
-		Modifiers Modifier		{ push @{$_[1]}, $_[2]; $_[1]; }
-	|	#empty					{ undef; }
+    ModifierList {
+        Parse::Java::Modifiers->new({
+            children => $_[1],
+        });
+    }
 ;
 
 PackageDecl:
