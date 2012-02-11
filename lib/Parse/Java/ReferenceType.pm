@@ -7,19 +7,13 @@ use Carp qw(croak);
 
 use base qw(Parse::Java::Type);
 
-use overload q{""} => \&as_string;
+#use overload q{""} => \&to_string;
 
-sub identifier {
-	my $self = shift;
-	
-	my @identifiers = grep { $_->isa('Parse::Java::Identifier') } @{$self->children};
-	return join(".", @identifiers);
-}
+#sub to_string {
+#	my $self = shift;
+#	return join "", map { "$_" } @{$self->children};
+#}
 
-sub as_string {
-	my $self = shift;
-	return $self->identifier;
-}
 1;
 __END__
 

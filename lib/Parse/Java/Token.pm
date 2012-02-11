@@ -11,7 +11,7 @@ __PACKAGE__->mk_accessors(qw(value line_no column));
 
 use overload q{""} => \&as_string, fallback => 1;
 
-sub as_string {
+sub to_string {
 	my $self = shift;
 	return $self->value;
 }

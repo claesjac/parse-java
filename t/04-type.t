@@ -18,17 +18,24 @@ for my $type (qw(byte short char int long float double boolean)) {
 # Reference types
 my $ast = Parse::Java->parse_string("Foo");
 isa_ok($ast, "Parse::Java::ReferenceType");
+is($ast->to_string, "Foo");
 
 $ast = Parse::Java->parse_string("Foo.Bar");
 isa_ok($ast, "Parse::Java::ReferenceType");
+is($ast->to_string, "Foo.Bar");
 
 $ast = Parse::Java->parse_string("List<String>");
 isa_ok($ast, "Parse::Java::ReferenceType");
+is($ast->to_string, "List<String>");
 
 $ast = Parse::Java->parse_string("Map<String, Object>");
 isa_ok($ast, "Parse::Java::ReferenceType");
+is($ast->to_string, "Map<String,Object>");
 
 $ast = Parse::Java->parse_string("Map<Object, List<? extends Foo>>");
 isa_ok($ast, "Parse::Java::ReferenceType");
+is($ast->to_string, "Map<Object,List<? extends Foo>>");
 
-diag Dumper $ast;
+$ast = Parse::Java->parse_string("Object[][]");
+isa_ok($ast, "Parse::Java::ReferenceType");
+is($ast->to_string, "Object[][]");

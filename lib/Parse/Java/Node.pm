@@ -1,5 +1,6 @@
 package Parse::Java::Node;
 
+use 5.010;
 use strict;
 use warnings;
 
@@ -9,6 +10,8 @@ use List::Util qw(first);
 use Parse::Java::Util::Iterator;
 
 use base qw(Parse::Java::Element);
+
+use overload q{""} => \&to_string;
 
 __PACKAGE__->mk_accessors(qw(children));
 
@@ -59,6 +62,11 @@ sub children_with {
 	}
 	
 	return @children;
+}
+
+sub to_string {
+    my $self = shift;
+    return join "", map { $_->to_string } @{$self->children};
 }
 
 1;
