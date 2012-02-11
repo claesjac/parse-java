@@ -13,6 +13,10 @@ sub modifiers {
 	return $self->children_with(isa => 'Parse::Java::Token::Modifier');
 }
 
+sub body {
+    shift->first_child_of_type("Parse::Java::InterfaceBody");
+}
+
 1;
 __END__
 

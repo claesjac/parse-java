@@ -10,7 +10,7 @@ use Parse::Java;
 
 my $java_dir = File::Spec->catdir('t', 'java-src');
 opendir(my $java_src_dir, $java_dir) || die $!;
-my @files = sort readdir($java_src_dir);
+my @files = sort grep { /\.java$/ } readdir($java_src_dir);
 closedir($java_src_dir);
 
 plan tests => scalar @files;

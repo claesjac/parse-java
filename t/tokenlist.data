@@ -38,7 +38,7 @@
 
 # Separators
 .			DOT_TK
-,			C_TK
+,			COMMA_TK
 ;			SC_TK
 (			OP_TK
 )			CP_TK

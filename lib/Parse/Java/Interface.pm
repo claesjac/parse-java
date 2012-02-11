@@ -7,8 +7,6 @@ use Carp qw(croak);
 
 use base qw(Parse::Java::TypeDecl);
 
-__PACKAGE__->mk_accessors(qw(extends));
-
 1;
 __END__
 

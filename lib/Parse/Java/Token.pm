@@ -9,7 +9,7 @@ use base qw(Class::Accessor);
 
 __PACKAGE__->mk_accessors(qw(value line_no column));
 
-use overload q{""} => \&as_string, fallback => 1;
+use overload q{""} => \&to_string, fallback => 1;
 
 sub to_string {
 	my $self = shift;

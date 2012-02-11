@@ -1,5 +1,5 @@
 /*
-	Java 1.5 compatible grammar
+    Java 1.5 compatible grammar
 */
 
 /* Keywords */
@@ -27,9 +27,11 @@ use Carp qw(croak);
 use Parse::Java::Class;
 use Parse::Java::Document;
 use Parse::Java::Element;
+use Parse::Java::Extends;
 use Parse::Java::Identifier;
 use Parse::Java::ImportDecl;
 use Parse::Java::Interface;
+use Parse::Java::InterfaceBody;
 use Parse::Java::Modifiers;
 use Parse::Java::PackageDecl;
 use Parse::Java::PrimitiveType::Boolean;
@@ -45,6 +47,7 @@ use Parse::Java::ReferenceType;
 use Parse::Java::Token;
 use Parse::Java::Type;
 use Parse::Java::TypeArgument;
+use Parse::Java::TypeArguments;
 use Parse::Java::TypeDecl;
 
 %}
@@ -52,24 +55,24 @@ use Parse::Java::TypeDecl;
 %%
 
 Identifier:
-		IDENTIFIER_TK						{ 
-			Parse::Java::Identifier->new({
-				children => [$_[1]],
-			});
-		}		
+        IDENTIFIER_TK                       { 
+            Parse::Java::Identifier->new({
+                children => [$_[1]],
+            });
+        }       
 ;
 
 QualifiedIdentifier:
-		QualifiedIdentifierList		{
-			Parse::Java::Identifier->new({
-				children => $_[1],
-			});
-		}
+        QualifiedIdentifierList     {
+            Parse::Java::Identifier->new({
+                children => $_[1],
+            });
+        }
 ;
 
 QualifiedIdentifierList:
-		QualifiedIdentifierList DOT_TK IDENTIFIER_TK 	{ push @{$_[1]}, $_[2], $_[3]; $_[1]; }
-	|	IDENTIFIER_TK									{ [ $_[1] ]; }
+        QualifiedIdentifierList DOT_TK IDENTIFIER_TK    { push @{$_[1]}, $_[2], $_[3]; $_[1]; }
+    |   IDENTIFIER_TK                                   { [ $_[1] ]; }
 ;
 
 ImportIdentifier:
@@ -93,6 +96,11 @@ Type:
         }
 ;
 
+TypeList:
+        TypeList COMMA_TK Type { push @{$_[1]}, @_[2, 3]; $_[1] }
+    |   Type { [$_[1]]; }
+;
+
 OptionalArrayType:
         OptionalArrayType OSB_TK CSB_TK { push @{$_[1]}, @_[2, 3]; $_[1] }
     |   #empty
@@ -114,7 +122,7 @@ BasicType:
 ReferenceType:
         Identifier TypeArguments OptionalReferenceTypeTail {
             my @children = $_[1];
-            push @children, @{$_[2]} if $_[2];
+            push @children, $_[2] if $_[2];
             push @children, @{$_[3]} if $_[3];
             Parse::Java::ReferenceType->new({
                 children => \@children,
@@ -131,7 +139,11 @@ OptionalReferenceTypeTail:
 ;
 
 TypeArguments:
-        LT_TK { $_[0]->{expect_gt} = 1; } TypeArgumentList GT_TK { [$_[1], @{$_[3]}, $_[4]]; }
+        LT_TK { $_[0]->{expect_gt} = 1; } TypeArgumentList GT_TK { 
+            Parse::Java::TypeArguments->new({
+                children => [$_[1], @{$_[3]}, $_[4]]
+            });
+        }
     |   #empty { undef; }
 ;
 
@@ -149,39 +161,17 @@ TypeArgument:
 
 /* Type declarations */
 TypeDeclarations:
-		TypeDeclarations TypeDeclaration	{ push @{$_[1]}, $_[2]; $_[1]; }
-	|	TypeDeclaration						{ [ $_[1] ] }
+        TypeDeclarations TypeDeclaration    { push @{$_[1]}, $_[2]; $_[1]; }
+    |   TypeDeclaration                     { [ $_[1] ] }
 ;
-	
+    
 TypeDeclaration: 
-		ClassDeclaration					{ $_[1]; }
-	|	InterfaceDeclaration				{ $_[1]; }
+    |   InterfaceDeclaration                { $_[1]; }
 ;
 
 ExtendsDeclaration:
-		EXTENDS_TK ReferenceType			{  [$_[1], $_[2]]; }
-	|	#empty								
-;
-
-ClassDeclaration:
-		Modifiers CLASS_TK Identifier ExtendsDeclaration ClassBody	{	
-			my @children;
-			push @children, @{$_[1]} if $_[1];
-			push @children, @_[2,3];
-			push @children, @{$_[4]} if $_[4];
-			push @children, $_[5] if $_[5];
-			Parse::Java::Class->new({
-				children => \@children
-			});
-		}
-;
-	
-ClassBody:
-		OCB_TK ClassBodyDeclaration CCB_TK {
-		}
-;
-
-ClassBodyDeclaration: #empty
+        EXTENDS_TK ReferenceType            {  [$_[1], $_[2]]; }
+    |   #empty                              
 ;
 
 InterfaceExtends:
@@ -194,22 +184,54 @@ InterfaceExtends:
 ;
 
 InterfaceDeclaration:
-		Modifiers INTERFACE_TK IDENTIFIER_TK InterfaceExtends InterfaceBody	{
-			Parse::Java::Interface->new({
-                children => [@_[1, 2, 3, 4, 5]]
-			});
-		}
+        Modifiers INTERFACE_TK IDENTIFIER_TK TypeArguments InterfaceExtends InterfaceBody   {
+            Parse::Java::Interface->new({
+                children => [@_[1, 2, 3, 4, 5, 6]]
+            });
+        }
 ;
 
 InterfaceBody:
         OCB_TK InterfaceBodyDeclaration CCB_TK {
+            my @body = $_[2] ? @{$_[2]} : ();
+            Parse::Java::InterfaceBody->new({children => [ $_[1], @body, $_[3] ] });
         }
 ;
 
 InterfaceBodyDeclaration: 
-    #empty { undef; }
+        Modifiers InterfaceMemberDecl {
+            unshift @{$_[2]->children}, $_[1];
+            $_[2]
+        }
+    | #empty { []; }
 ;
 
+InterfaceMemberDecl:
+        InterfaceMethodOrFieldDecl
+;
+
+InterfaceMethodOrFieldDecl:
+        Type Identifier InterfaceMethodOrFieldRest
+;
+
+InterfaceMethodOfFieldRest:
+        ConstantDeclaratorsRest SC_TK
+    |   InterfaceMethodDeclaratorRest
+;
+
+InterfaceMethodDeclaratorRest:
+    FormalParameters 
+;
+
+FormalParameters:
+    OP_TK FormalParameterDecls CP_TK
+;
+
+FormalParameterDecls:
+        FINAL_TK Type FormalParameterDeclsRest
+    |   Type FormalParameterDeclsRest
+;
+    
 ModifierList:
         ModifierList MODIFIER_TK { 
             push @{$_[1]}, $_[2]; 
@@ -267,10 +289,10 @@ CompilationUnit:
             push @children, @{$_[2]} if $_[2];
             push @children, @{$_[3]} if $_[3];
             
-			Parse::Java::Document->new({
-			    children => \@children
-			}); 
-		}
+            Parse::Java::Document->new({
+                children => \@children
+            }); 
+        }
 ;
 
 %%
@@ -281,135 +303,135 @@ sub _error {
 }
 
 our %Keyword = (
-	abstract	    => 'MODIFIER_TK',
-	const			=> 'MODIFIER_TK',
-	final		    => 'MODIFIER_TK',
-	native		    => 'MODIFIER_TK',
-	private			=> 'MODIFIER_TK',
-	protected 	    => 'MODIFIER_TK',
-	public	 	    => 'MODIFIER_TK',
-	static		    => 'MODIFIER_TK',
-	strictfp		=> 'MODIFIER_TK',
-	synchronized	=> 'MODIFIER_TK',
-	transient		=> 'MODIFIER_TK',
-	volatile		=> 'MODIFIER_TK',
-	map { $_ => uc($_) . "_TK" } qw(
-	continue    for         new          switch
-	assert      default     if           package      
-	boolean     do          goto         this
-	break       double      implements   throw
-	byte        else        import       throws
-	case        enum        instanceof   return
-	catch       extends     int          short
-	char        interface   void 		 try
-	class       finally     long               
-	float       super       while
+    abstract        => 'MODIFIER_TK',
+    const           => 'MODIFIER_TK',
+    final           => 'MODIFIER_TK',
+    native          => 'MODIFIER_TK',
+    private         => 'MODIFIER_TK',
+    protected       => 'MODIFIER_TK',
+    public          => 'MODIFIER_TK',
+    static          => 'MODIFIER_TK',
+    strictfp        => 'MODIFIER_TK',
+    synchronized    => 'MODIFIER_TK',
+    transient       => 'MODIFIER_TK',
+    volatile        => 'MODIFIER_TK',
+    map { $_ => uc($_) . "_TK" } qw(
+    continue    for         new          switch
+    assert      default     if           package      
+    boolean     do          goto         this
+    break       double      implements   throw
+    byte        else        import       throws
+    case        enum        instanceof   return
+    catch       extends     int          short
+    char        interface   void         try
+    class       finally     long               
+    float       super       while
 ));
 
 our %KeywordClass = (
-	abstract	    => 'Modifier',
-	const			=> 'Modifier',
-	final		    => 'Modifier',
-	native		    => 'Modifier',
-	private			=> 'Modifier',
-	protected 	    => 'Modifier',
-	public	 	    => 'Modifier',
-	static		    => 'Modifier',
-	strictfp		=> 'Modifier',
-	synchronized	=> 'Modifier',
-	transient		=> 'Modifier',
-	volatile		=> 'Modifier',
+    abstract        => 'Modifier',
+    const           => 'Modifier',
+    final           => 'Modifier',
+    native          => 'Modifier',
+    private         => 'Modifier',
+    protected       => 'Modifier',
+    public          => 'Modifier',
+    static          => 'Modifier',
+    strictfp        => 'Modifier',
+    synchronized    => 'Modifier',
+    transient       => 'Modifier',
+    volatile        => 'Modifier',
 );
 
 our %Separator = (
-	'(' => 'OP_TK',
-	')' => 'CP_TK',
-	'{' => 'OCB_TK',
-	'}' => 'CCB_TK',
-	'[' => 'OSB_TK',
-	']' => 'CSB_TK',
-	';' => 'SC_TK',
-	',' => 'COMMA_TK',
-	'.' => 'DOT_TK',
+    '(' => 'OP_TK',
+    ')' => 'CP_TK',
+    '{' => 'OCB_TK',
+    '}' => 'CCB_TK',
+    '[' => 'OSB_TK',
+    ']' => 'CSB_TK',
+    ';' => 'SC_TK',
+    ',' => 'COMMA_TK',
+    '.' => 'DOT_TK',
 );
 
 our %Operator = (
-	# = and combination
-	'=='   => 'EQ_TK',
-	'='    => 'ASSIGN_TK',
-	# > and combinations
-	'>='   => 'GTE_TK',
-	'>>>=' => 'ZRS_ASSIGN_TK',
-	'>>>'  => 'ZRS_TK',
-	'>>='  => 'RS_ASSIGN_TK',
-	'>>'   => 'RS_TK',
-	'>'    => 'GT_TK',
-	# < and combinations
-	'<='   => 'LTE_TK',
-	'<<='  => 'LS_ASSIGN_TK',
-	'<<'   => 'LS_TK',
-	'<'    => 'LT_TK',
-	# & and combinations
-	'&&'   => 'BOOL_AND_TK',
-	'&='   => 'AND_ASSIGN_TK',
-	'&'    => 'AND_TK',
-	# | and combinations
-	'||'   => 'BOOL_OR_TK',
-	'|='   => 'OR_ASSIGN_TK',
-	'|'    => 'OR_TK',
-	# + and combinations
-	'++'   => 'INCR_TK',
-	'+='   => 'PLUS_ASSIGN_TK',
-	'+'    => 'PLUS_TK',
-	# - and combinations
-	'--'   => 'DECR_TK',
-	'-='   => 'MINUS_ASSIGN_TK',
-	'-'    => 'MINUS_TK',
-	# * and combinations
-	'*='   => 'MULT_ASSIGN_TK',
-	'*'    => 'MULT_TK',
-	# / and combinations
-	'/='   => 'DIV_ASSIGN_TK',
-	'/'    => 'DIV_TK',
-	# ^ and combinations
-	'^='   => 'XOR_ASSIGN_TK',
-	'^'    => 'XOR_TK',
-	# % and combinations
-	'%='   => 'REM_ASSIGN_TK',
-	'%'    => 'REM_TK',
-	# ! and combinations
-	'!='   => 'NEQ_ASSIGN_TK',
-	'!'    => 'NEG_TK',
-	# ?, : and ~
-	'?'    => 'REL_QM_TK',
-	':'    => 'REL_CL_TK',
-	'~'    => 'NOT_TK',
+    # = and combination
+    '=='   => 'EQ_TK',
+    '='    => 'ASSIGN_TK',
+    # > and combinations
+    '>='   => 'GTE_TK',
+    '>>>=' => 'ZRS_ASSIGN_TK',
+    '>>>'  => 'ZRS_TK',
+    '>>='  => 'RS_ASSIGN_TK',
+    '>>'   => 'RS_TK',
+    '>'    => 'GT_TK',
+    # < and combinations
+    '<='   => 'LTE_TK',
+    '<<='  => 'LS_ASSIGN_TK',
+    '<<'   => 'LS_TK',
+    '<'    => 'LT_TK',
+    # & and combinations
+    '&&'   => 'BOOL_AND_TK',
+    '&='   => 'AND_ASSIGN_TK',
+    '&'    => 'AND_TK',
+    # | and combinations
+    '||'   => 'BOOL_OR_TK',
+    '|='   => 'OR_ASSIGN_TK',
+    '|'    => 'OR_TK',
+    # + and combinations
+    '++'   => 'INCR_TK',
+    '+='   => 'PLUS_ASSIGN_TK',
+    '+'    => 'PLUS_TK',
+    # - and combinations
+    '--'   => 'DECR_TK',
+    '-='   => 'MINUS_ASSIGN_TK',
+    '-'    => 'MINUS_TK',
+    # * and combinations
+    '*='   => 'MULT_ASSIGN_TK',
+    '*'    => 'MULT_TK',
+    # / and combinations
+    '/='   => 'DIV_ASSIGN_TK',
+    '/'    => 'DIV_TK',
+    # ^ and combinations
+    '^='   => 'XOR_ASSIGN_TK',
+    '^'    => 'XOR_TK',
+    # % and combinations
+    '%='   => 'REM_ASSIGN_TK',
+    '%'    => 'REM_TK',
+    # ! and combinations
+    '!='   => 'NEQ_ASSIGN_TK',
+    '!'    => 'NEG_TK',
+    # ?, : and ~
+    '?'    => 'REL_QM_TK',
+    ':'    => 'REL_CL_TK',
+    '~'    => 'NOT_TK',
 );
 
 our $PreserveWhitespace = 0;
 our $PreserveComments   = 0;
 
 # Numeric stuff
-my $DigitRe						= qr/\d/;
-my $DecimalNumeralRe			= qr/0|[1-9]$DigitRe*/;
-my $HexDigitRe					= qr/[0-9a-fA-F]/;
-my $HexNumeralRe				= qr/0[xX]$HexDigitRe+/;
-my $OctDigitRe					= qr/[0-7]/;
-my $OctNumeralRe				= qr/0$OctDigitRe+/;
-my $ExponentRe 					= qr/(?:[eE][+-]?\d+)/;
-my $FloatTypeSuffixRe 			= qr/[fFdD]/;
-my $IntegerTypeSuffixRe			= qr/[lL]/;
-my $HexSignificandRe			= qr/0[xX](?:[0-9a-fA-F]+\.?|[0-9a-fA-F]*\.[0-9a-fA-F]+)/;
-my $BinaryExponentIndicatorRe	= qr/[pP][+-]?\d+/; 
+my $DigitRe                     = qr/\d/;
+my $DecimalNumeralRe            = qr/0|[1-9]$DigitRe*/;
+my $HexDigitRe                  = qr/[0-9a-fA-F]/;
+my $HexNumeralRe                = qr/0[xX]$HexDigitRe+/;
+my $OctDigitRe                  = qr/[0-7]/;
+my $OctNumeralRe                = qr/0$OctDigitRe+/;
+my $ExponentRe                  = qr/(?:[eE][+-]?\d+)/;
+my $FloatTypeSuffixRe           = qr/[fFdD]/;
+my $IntegerTypeSuffixRe         = qr/[lL]/;
+my $HexSignificandRe            = qr/0[xX](?:[0-9a-fA-F]+\.?|[0-9a-fA-F]*\.[0-9a-fA-F]+)/;
+my $BinaryExponentIndicatorRe   = qr/[pP][+-]?\d+/; 
 
 # Escape stuff
-my $EscapeSequence				= qr/\\[btnfr"'\\0-7]|\\[0-3]?$OctDigitRe{2}/;
+my $EscapeSequence              = qr/\\[btnfr"'\\0-7]|\\[0-3]?$OctDigitRe{2}/;
 
 # Letter stuff
 
-my $JavaLetterRe				= qr/\p{IsAlpha}|\$|_/;
-my $JavaLetterOrDigitRe			= qr/\p{IsAlnum}|\$|_/;
-my $IdentifierRe				= qr/$JavaLetterRe+$JavaLetterOrDigitRe*/;
+my $JavaLetterRe                = qr/\p{IsAlpha}|\$|_/;
+my $JavaLetterOrDigitRe         = qr/\p{IsAlnum}|\$|_/;
+my $IdentifierRe                = qr/$JavaLetterRe+$JavaLetterOrDigitRe*/;
 
 use Parse::Java::Token::Literal;
 use Parse::Java::Token::Operator;
@@ -422,126 +444,126 @@ use Parse::Java::Token::Null;
 use Parse::Java::Token::Identifier;
 
 sub _mk_token {
-	my ($token, $value, $line_no, $column) = @_;
-	
-	return "Parse::Java::Token::${token}"->new({
-		value 	=> $value,
-#		line_no => $line_no,
-#		column 	=> $column
-	});
+    my ($token, $value, $line_no, $column) = @_;
+    
+    return "Parse::Java::Token::${token}"->new({
+        value   => $value,
+#       line_no => $line_no,
+#       column  => $column
+    });
 }
 
 sub _next_token {
     my $self = shift; 
 
-	# This list will maybe contain whitespace and comments
-	# that are to be preserved. And since we always insert
-	# it into the tree before the real token we must make
-	# sure it's empty between before we read the next token
-	# or we'll end up with a lot of crap
-	$self->YYData->{PRE_TOKEN_LIST} = [];
-	
-	CHECK_TOKEN:
+    # This list will maybe contain whitespace and comments
+    # that are to be preserved. And since we always insert
+    # it into the tree before the real token we must make
+    # sure it's empty between before we read the next token
+    # or we'll end up with a lot of crap
+    $self->YYData->{PRE_TOKEN_LIST} = [];
+    
+    CHECK_TOKEN:
     for ($self->YYData->{INPUT}) {
-		# We might end up with whitespace or comment as last token
-		# which will redo and trigger exception if not handled here
-		last CHECK_TOKEN unless $_;
-		
-		# Whitespace
+        # We might end up with whitespace or comment as last token
+        # which will redo and trigger exception if not handled here
+        last CHECK_TOKEN unless $_;
+        
+        # Whitespace
         s/^([\040\011\014]|\015\012|\015|\012)// && do { 
-			# Push whitespace to children list of current element
-			push @{$self->YYData->{PRE_TOKEN_LIST}}, _mk_token(Whitespace => $1) if $PreserveWhitespace;
-			
-			redo CHECK_TOKEN; 
-		};
-		
-		# Singleline comments
-		s!^//!! && do {
-			s/^(.*)//; # Remove everything til next line
-			push @{$self->YYData->{PRE_TOKEN_LIST}}, _mk_token(Comment => $1) if $PreserveComments;
-			
-			redo CHECK_TOKEN;
-		};
-		
-		# Multiline tokens
-		s!^\/\*(.*?)\*/!!s && do {
-			push @{$self->YYData->{PRE_TOKEN_LIST}}, _mk_token(Comment => $1) if $PreserveComments;
+            # Push whitespace to children list of current element
+            push @{$self->YYData->{PRE_TOKEN_LIST}}, _mk_token(Whitespace => $1) if $PreserveWhitespace;
+            
+            redo CHECK_TOKEN; 
+        };
+        
+        # Singleline comments
+        s!^//!! && do {
+            s/^(.*)//; # Remove everything til next line
+            push @{$self->YYData->{PRE_TOKEN_LIST}}, _mk_token(Comment => $1) if $PreserveComments;
+            
+            redo CHECK_TOKEN;
+        };
+        
+        # Multiline tokens
+        s!^\/\*(.*?)\*/!!s && do {
+            push @{$self->YYData->{PRE_TOKEN_LIST}}, _mk_token(Comment => $1) if $PreserveComments;
 
-			redo CHECK_TOKEN;
-		};
-				
-		# Float and double literals
-		(s/^( $DigitRe+ \. $DigitRe* $ExponentRe? ) ( $FloatTypeSuffixRe? )//x  ||
-		 s/^( \. $DigitRe+			  $ExponentRe? ) ( $FloatTypeSuffixRe? )//x  ||
-		 s/^( $DigitRe+		  		  $ExponentRe  ) ( $FloatTypeSuffixRe? )//x	 ||
-		 s/^( $DigitRe+		  		  $ExponentRe? ) ( $FloatTypeSuffixRe  )//x  ||
-		 s/^( $HexSignificandRe $BinaryExponentIndicatorRe ) ( $FloatTypeSuffixRe?  )//x
-		) && do {
-			# Might need to set distinct TK somewhere else
-			return 'FP_TK', _mk_token(Literal => $1);
-		};
+            redo CHECK_TOKEN;
+        };
+                
+        # Float and double literals
+        (s/^( $DigitRe+ \. $DigitRe* $ExponentRe? ) ( $FloatTypeSuffixRe? )//x  ||
+         s/^( \. $DigitRe+            $ExponentRe? ) ( $FloatTypeSuffixRe? )//x  ||
+         s/^( $DigitRe+               $ExponentRe  ) ( $FloatTypeSuffixRe? )//x  ||
+         s/^( $DigitRe+               $ExponentRe? ) ( $FloatTypeSuffixRe  )//x  ||
+         s/^( $HexSignificandRe $BinaryExponentIndicatorRe ) ( $FloatTypeSuffixRe?  )//x
+        ) && do {
+            # Might need to set distinct TK somewhere else
+            return 'FP_TK', _mk_token(Literal => $1);
+        };
 
-		# Integer literals
-		(s/^( $HexNumeralRe )     ( $IntegerTypeSuffixRe? )//x		||
-		 s/^( $OctNumeralRe )	  ( $IntegerTypeSuffixRe? )//x      ||
-   		 s/^( $DecimalNumeralRe ) ( $IntegerTypeSuffixRe? )//x
-		) && do {
-			# Might need to set distinct TK somewhere else
-			return 'INTEGRAL_TK', _mk_token(Literal => $1);
-		};
-		
-		# Character literals
-		s/^'([^'\\']|$EscapeSequence)'// && do {
-			return 'CHAR_TK', _mk_token(Literal => $1);
-		};
-		
-		# String literals
-		s/^"((?:[^"\\]|$EscapeSequence)*)"// && do {
-			return 'STRING_TK', _mk_token(Literal => $1);
-		};
-		
-		# Identifier and Keyword
-		s/^($JavaLetterRe+$JavaLetterOrDigitRe*)//x && do {
-			# Check if it's a keyword, otherwise it's probablly an identifier
-			if (exists $Keyword{$1}) {
-				my $token_class = $KeywordClass{$1} || "Keyword";
-				return $Keyword{$1}, _mk_token($token_class => $1);
-			}
-			
-			# Might be a literal boolean
-			return 'BOOL_TK', _mk_token(Literal => $1) if $1 eq 'true' || $1 eq 'false';
-			
-			# Might be a null
-			return 'NULL_TK', _mk_token(Null => $1) if $1 eq 'null';
-			
-			# Now it's an identifier
-			return 'IDENTIFIER_TK', _mk_token(Identifier => $1);
-		};
-		
-		# Separator
-		s/^([\(\)\{\}\[\]\;\,\.])// && do {
-			return $Separator{$1}, _mk_token(Structure => $1);
-		};
-		
-		# Operator
-		s/^(\+\+|--|\?|:|~|&&|\|\|)// && do {
-			return $Operator{$1}, _mk_token(Operator => $1);
-		};
+        # Integer literals
+        (s/^( $HexNumeralRe )     ( $IntegerTypeSuffixRe? )//x      ||
+         s/^( $OctNumeralRe )     ( $IntegerTypeSuffixRe? )//x      ||
+         s/^( $DecimalNumeralRe ) ( $IntegerTypeSuffixRe? )//x
+        ) && do {
+            # Might need to set distinct TK somewhere else
+            return 'INTEGRAL_TK', _mk_token(Literal => $1);
+        };
+        
+        # Character literals
+        s/^'([^'\\']|$EscapeSequence)'// && do {
+            return 'CHAR_TK', _mk_token(Literal => $1);
+        };
+        
+        # String literals
+        s/^"((?:[^"\\]|$EscapeSequence)*)"// && do {
+            return 'STRING_TK', _mk_token(Literal => $1);
+        };
+        
+        # Identifier and Keyword
+        s/^($JavaLetterRe+$JavaLetterOrDigitRe*)//x && do {
+            # Check if it's a keyword, otherwise it's probablly an identifier
+            if (exists $Keyword{$1}) {
+                my $token_class = $KeywordClass{$1} || "Keyword";
+                return $Keyword{$1}, _mk_token($token_class => $1);
+            }
+            
+            # Might be a literal boolean
+            return 'BOOL_TK', _mk_token(Literal => $1) if $1 eq 'true' || $1 eq 'false';
+            
+            # Might be a null
+            return 'NULL_TK', _mk_token(Null => $1) if $1 eq 'null';
+            
+            # Now it's an identifier
+            return 'IDENTIFIER_TK', _mk_token(Identifier => $1);
+        };
+        
+        # Separator
+        s/^([\(\)\{\}\[\]\;\,\.])// && do {
+            return $Separator{$1}, _mk_token(Structure => $1);
+        };
+        
+        # Operator
+        s/^(\+\+|--|\?|:|~|&&|\|\|)// && do {
+            return $Operator{$1}, _mk_token(Operator => $1);
+        };
 
-		s/^(={1,2})// && do {
-			return $Operator{$1}, _mk_token(Operator => $1);
-		};
-		
+        s/^(={1,2})// && do {
+            return $Operator{$1}, _mk_token(Operator => $1);
+        };
+        
         $self->{expect_gt} && s/^(>)// && do {
             delete $self->{expect_gt};
             return $Operator{$1}, _mk_token(Operator => $1);
         };
-	    
-		s/^((?:[\+\-\*\/\&\|\^\%\!]|<{1,2}|>{1,3})=?)// && do {
-			return $Operator{$1}, _mk_token(Operator => $1);
-		};	
-		
-		croak "Ouch.. we shouldn't really end up here for '$_'";	
+        
+        s/^((?:[\+\-\*\/\&\|\^\%\!]|<{1,2}|>{1,3})=?)// && do {
+            return $Operator{$1}, _mk_token(Operator => $1);
+        };  
+        
+        croak "Ouch.. we shouldn't really end up here for '$_'";    
     }
     
     # Abort parsing whene we have no more
@@ -549,21 +571,21 @@ sub _next_token {
 }
 
 sub _set_input {
-	my $self = shift;
-	my $input = shift;
-	
-	# TODO: replace Unicode escape sequence (\uNNNN) with utf8-character
-	$self->YYData->{INPUT} = $input;
-	
-	1;
+    my $self = shift;
+    my $input = shift;
+    
+    # TODO: replace Unicode escape sequence (\uNNNN) with utf8-character
+    $self->YYData->{INPUT} = $input;
+    
+    1;
 }
 
 sub _run {
     my $self = shift;
-	my %extra_args;
-	if ($ENV{YAPP_DEBUG}) {
-#		$extra_args{yydebug} = 0x1F;
-	}
+    my %extra_args;
+    if ($ENV{YAPP_DEBUG}) {
+#       $extra_args{yydebug} = 0x1F;
+    }
     return $self->YYParse(yylex => \&_next_token, yyerror => \&_error, %extra_args);
 }
 

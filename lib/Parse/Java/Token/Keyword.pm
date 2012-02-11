@@ -14,6 +14,7 @@ sub significant {
 
 my %Whitespace = (
     'extends' => WHITESPACE_BEFORE | WHITESPACE_AFTER,
+    'interface' => WHITESPACE_AFTER,
 );
 
 my @WhitespaceFormater = (

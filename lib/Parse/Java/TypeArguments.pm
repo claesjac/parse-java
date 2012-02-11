@@ -1,4 +1,4 @@
-package Parse::Java::TypeArgument;
+package Parse::Java::TypeArguments;
 
 use strict;
 use warnings;

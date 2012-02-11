@@ -1,4 +1,4 @@
-package Parse::Java::TypeArgument;
+package Parse::Java::Extends;
 
 use strict;
 use warnings;
@@ -10,6 +10,6 @@ __END__
 
 =head1 NAME
 
-Parse::Java::TypeArgument - Description
+Parse::Java::Extends - Node representing an identifier
 
 =cut

@@ -1,4 +1,4 @@
-package Parse::Java::TypeArgument;
+package Parse::Java::TypeBody;
 
 use strict;
 use warnings;
@@ -10,6 +10,6 @@ __END__
 
 =head1 NAME
 
-Parse::Java::TypeArgument - Description
+Parse::Java::Type - Description
 
 =cut
