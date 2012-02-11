@@ -24,6 +24,7 @@ use warnings;
 
 use Carp qw(croak);
 
+use Parse::Java::ArrayDecl;
 use Parse::Java::Class;
 use Parse::Java::Document;
 use Parse::Java::Element;
@@ -34,6 +35,8 @@ use Parse::Java::Interface;
 use Parse::Java::InterfaceBody;
 use Parse::Java::Modifiers;
 use Parse::Java::PackageDecl;
+use Parse::Java::Parameter;
+use Parse::Java::Parameters;
 use Parse::Java::PrimitiveType::Boolean;
 use Parse::Java::PrimitiveType::Byte;
 use Parse::Java::PrimitiveType::Char;
@@ -102,7 +105,7 @@ TypeList:
 ;
 
 OptionalArrayType:
-        OptionalArrayType OSB_TK CSB_TK { push @{$_[1]}, @_[2, 3]; $_[1] }
+        OptionalArrayType OSB_TK CSB_TK { push @{$_[1]}, Parse::Java::ArrayDecl->new({children => [@_[2, 3]]}); $_[1] }
     |   #empty
 ;
 
@@ -220,18 +223,51 @@ InterfaceMethodOfFieldRest:
 ;
 
 InterfaceMethodDeclaratorRest:
-    FormalParameters 
+        FormalParameters 
+;
+
+VariableDeclaratorId:
+        Identifier OptionalReferenceTypeTail { [$_[1], $_[2] ? $_[2] : ()] }
+    |   Identifier { [$_[1]] }
 ;
 
 FormalParameters:
-    OP_TK FormalParameterDecls CP_TK
+        OP_TK FormalParameterList CP_TK {
+            my @params = $_[2] ? @{$_[2]} : ();
+            Parse::Java::Parameters->new({
+                children => [ $_[1], @params, $_[3] ]
+            });
+        }
 ;
 
-FormalParameterDecls:
-        FINAL_TK Type FormalParameterDeclsRest
-    |   Type FormalParameterDeclsRest
+FormalParameter:
+        FINAL_TK Type VariableDeclaratorId { 
+            my $modifier = Parse::Java::Modifiers->new({
+                children => [$_[1]]
+            }); 
+            Parse::Java::Parameter->new({ 
+                children => [$modifier, $_[2], @{$_[3]}]
+            }); 
+        }
+    |   Type VariableDeclaratorId { 
+            Parse::Java::Parameter->new({ 
+                children => [$_[1], @{$_[2]}],
+            });
+        }
+    |   Type YADA_YADA_TADA_TK VariableDeclaratorId {
+            push @{$_[1]->children}, Parse::Java::ArrayDecl->new({children => [$_[2]]});
+            Parse::Java::Parameter->new({ 
+                children => [$_[1], @{$_[3]}],
+            });            
+        }
 ;
-    
+
+FormalParameterList:
+        FormalParameterList COMMA_TK FormalParameter { push @{$_[1]}, @_[2, 3]; $_[1] }
+    |   FormalParameter { [$_[1]] }
+    |   #empty { [] }
+;
+
 ModifierList:
         ModifierList MODIFIER_TK { 
             push @{$_[1]}, $_[2]; 
@@ -353,6 +389,7 @@ our %Separator = (
     ';' => 'SC_TK',
     ',' => 'COMMA_TK',
     '.' => 'DOT_TK',
+    '...' => 'YADA_YADA_TADA_TK'
 );
 
 our %Operator = (
@@ -539,8 +576,11 @@ sub _next_token {
             # Now it's an identifier
             return 'IDENTIFIER_TK', _mk_token(Identifier => $1);
         };
+                
+        s/^(\.{3})// && do {
+            return $Separator{$1}, _mk_token(Structure => $1);
+        };
         
-        # Separator
         s/^([\(\)\{\}\[\]\;\,\.])// && do {
             return $Separator{$1}, _mk_token(Structure => $1);
         };

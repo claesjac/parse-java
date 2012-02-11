@@ -3,16 +3,11 @@ package Parse::Java::ReferenceType;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use base qw(Parse::Java::Type);
 
-#use overload q{""} => \&to_string;
-
-#sub to_string {
-#	my $self = shift;
-#	return join "", map { "$_" } @{$self->children};
-#}
+sub dimensions {
+    return scalar shift->children_with({isa => "Parse::Java::ArrayDecl"});
+}
 
 1;
 __END__
