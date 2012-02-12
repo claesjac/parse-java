@@ -13,5 +13,10 @@ sub identifier {
     shift->first_child_of_type("Parse::Java::Identifier");
 }
 
+sub vargs {
+    my $type = shift->type;
+    $type->can("vargs") && $type->vargs;
+}
+
 1;
 __END__

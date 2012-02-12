@@ -23,9 +23,11 @@ is($ast->count, 2, "Two arguments");
 is($ast->parameter(1)->type->to_string, "bar[]");
 is($ast->parameter(1)->type->dimensions, 1);
 is($ast->parameter(1)->identifier->to_string, "b");
+ok(!$ast->parameter(0)->type->vargs);
 
 $ast = Parse::Java->parse_string("(Object... a)");
 isa_ok($ast, "Parse::Java::Parameters");
 is($ast->count, 1, "One arguments");
 is($ast->parameter(0)->type->dimensions, 1);
 is($ast->parameter(0)->type->to_string, "Object...");
+ok($ast->parameter(0)->type->vargs);

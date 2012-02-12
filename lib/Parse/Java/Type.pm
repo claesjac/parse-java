@@ -5,6 +5,10 @@ use warnings;
 
 use base qw(Parse::Java::Node);
 
+sub vargs {
+    0;
+}
+
 1;
 __END__
 
