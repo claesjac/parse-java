@@ -4,7 +4,6 @@ use 5.010;
 use strict;
 use warnings;
 
-use Carp qw(croak);
 use List::Util qw(first);
 
 use Parse::Java::Util::Iterator;

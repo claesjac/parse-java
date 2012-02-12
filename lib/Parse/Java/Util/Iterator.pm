@@ -3,8 +3,6 @@ package Parse::Java::Util::Iterator;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use overload q{<>} => \&get_next;
 
 sub new {

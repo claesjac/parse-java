@@ -3,8 +3,6 @@ package Parse::Java::PrimitiveType::FloatingPointType;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use base qw(Parse::Java::PrimitiveType);
 
 # body ...

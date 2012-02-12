@@ -3,8 +3,6 @@ package Parse::Java::Identifier;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use base qw(Parse::Java::Node);
 
 use overload q{""} => \&to_string, fallback => 1;

@@ -3,8 +3,6 @@ package Parse::Java::Token::Null;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use base qw(Parse::Java::Token);
 
 sub significant {

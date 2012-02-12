@@ -16,7 +16,7 @@ BEGIN {
 	my $base_dir = __FILE__;
 	$base_dir =~ s/Java\.pm$//;
 
-	open my $grammar_io, "<", File::Spec->catfile($base_dir, 'Java.yp') || die $!;
+	open my $grammar_io, "<", File::Spec->catfile($base_dir, 'Java.yp') or die "Failed to open grammar because of: $!";
 	my $grammar_src = do { local $/; <$grammar_io>; };
 	close $grammar_io;
 
@@ -54,20 +54,20 @@ BEGIN {
 		my $output = "Java.output";
 		my $tmp;
 
-		open(OUT, ">$output") || croak $!;
+		open my $out, ">", $output or croak "Failed to open $output because of: $!";
 
 		$tmp = $parser->Warnings() || "";
-		print OUT "Warnings:\n---------\n$tmp\n";
+		print $out "Warnings:\n---------\n$tmp\n";
 		$tmp = $parser->Conflicts() || "";
-		print OUT "Conflicts:\n----------\n$tmp\n";
-		print OUT "Rules:\n------\n";
-		print OUT $parser->ShowRules()."\n";
-		print OUT "States:\n-------\n";
-		print OUT $parser->ShowDfa()."\n";
-		print OUT "Summary:\n--------\n";
-		print OUT $parser->Summary();
+		print $out "Conflicts:\n----------\n$tmp\n";
+		print $out "Rules:\n------\n";
+		print $out $parser->ShowRules()."\n";
+		print $out "States:\n-------\n";
+		print $out $parser->ShowDfa()."\n";
+		print $out "Summary:\n--------\n";
+		print $out $parser->Summary();
 
-		close(OUT);
+		close $out;
 	}
 }
 

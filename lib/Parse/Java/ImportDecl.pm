@@ -3,8 +3,6 @@ package Parse::Java::ImportDecl;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use base qw(Parse::Java::Node);
 
 sub identifier {

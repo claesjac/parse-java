@@ -3,8 +3,6 @@ package Parse::Java::PrimitiveType::Long;
 use strict;
 use warnings;
 
-use Carp qw(croak);
-
 use base qw(Parse::Java::PrimitiveType::IntegralType);
 
 # body ...
