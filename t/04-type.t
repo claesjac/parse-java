@@ -6,7 +6,7 @@ use warnings;
 use Data::Dumper qw(Dumper);
 use Test::More qw(no_plan);
 
-$ENV{PARSE_JAVA_START_RULE} = "Type";
+$ENV{PARSE_JAVA_START_PRODUCTION} = "Type";
 require Parse::Java;
 
 # Basic types

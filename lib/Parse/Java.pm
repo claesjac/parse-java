@@ -21,8 +21,8 @@ BEGIN {
 	close $grammar_io;
 
 	# This is a hack we need to testing
-	if ($ENV{PARSE_JAVA_START_RULE}) {
-		$grammar_src =~ s/^\%start \w+$/%start $ENV{PARSE_JAVA_START_RULE}/m;
+	if ($ENV{PARSE_JAVA_START_PRODUCTION}) {
+		$grammar_src =~ s/^\%start \w+$/%start $ENV{PARSE_JAVA_START_PRODUCTION}/m;
  	}
 	
 	my $parser = Parse::Yapp->new(input => $grammar_src);

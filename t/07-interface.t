@@ -8,7 +8,7 @@ use Test::More qw(no_plan);
 
 BEGIN { use_ok("Parse::Java::Interface"); }
 
-$ENV{PARSE_JAVA_START_RULE} = "InterfaceDeclaration";
+$ENV{PARSE_JAVA_START_PRODUCTION} = "InterfaceDeclaration";
 require Parse::Java;
 
 my $ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
@@ -24,7 +24,7 @@ interface Test <K> extends List, Queue<K> {
 }
 __END_OF_JAVA__
 
-my $ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
+$ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
 interface Foo {
     public void bar();
     void quax() throws This, java.lang.RuntimeException;

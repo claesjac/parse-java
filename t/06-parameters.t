@@ -6,7 +6,7 @@ use warnings;
 use Data::Dumper qw(Dumper);
 use Test::More qw(no_plan);
 
-$ENV{PARSE_JAVA_START_RULE} = "FormalParameters";
+$ENV{PARSE_JAVA_START_PRODUCTION} = "FormalParameters";
 require Parse::Java;
 
 my $ast = Parse::Java->parse_string("()");
