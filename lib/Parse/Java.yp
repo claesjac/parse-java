@@ -33,6 +33,7 @@ use Parse::Java::Identifier;
 use Parse::Java::ImportDecl;
 use Parse::Java::Interface;
 use Parse::Java::InterfaceBody;
+use Parse::Java::Method;
 use Parse::Java::Modifiers;
 use Parse::Java::PackageDecl;
 use Parse::Java::Parameter;
@@ -78,6 +79,11 @@ QualifiedIdentifierList:
     |   IDENTIFIER_TK                                   { [ $_[1] ]; }
 ;
 
+QualifiedIdentifiers:
+        QualifiedIdentifiers COMMA_TK QualifiedIdentifier { push @{$_[1]}, @_[2, 3] }
+        QualifiedIdentifier { [$_[1]] }
+;
+
 ImportIdentifier:
         QualifiedIdentifierList DOT_TK MULT_TK { 
             Parse::Java::Identifier->new({
@@ -118,6 +124,11 @@ BasicType:
     |   FLOAT_TK    { Parse::Java::PrimitiveType::Float->new({ children => [$_[1]] }) }
     |   DOUBLE_TK   { Parse::Java::PrimitiveType::Double->new({ children => [$_[1]] }) }
     |   BOOLEAN_TK  { Parse::Java::PrimitiveType::Boolean->new({ children => [$_[1]] }) }
+;
+
+ReturnType:
+        Type    { $_[1] }
+    |   VOID_TK
 ;
 
 /* Reference types */
@@ -169,7 +180,7 @@ TypeDeclarations:
 ;
     
 TypeDeclaration: 
-    |   InterfaceDeclaration                { $_[1]; }
+        InterfaceDeclaration                { $_[1]; }
 ;
 
 ExtendsDeclaration:
@@ -195,35 +206,36 @@ InterfaceDeclaration:
 ;
 
 InterfaceBody:
-        OCB_TK InterfaceBodyDeclaration CCB_TK {
+        OCB_TK InterfaceBodyDeclaration CCB_TK {            
             my @body = $_[2] ? @{$_[2]} : ();
             Parse::Java::InterfaceBody->new({children => [ $_[1], @body, $_[3] ] });
         }
 ;
 
 InterfaceBodyDeclaration: 
-        Modifiers InterfaceMemberDecl {
-            unshift @{$_[2]->children}, $_[1];
-            $_[2]
+        InterfaceBodyDeclaration Modifiers InterfaceMemberDecl {
+            unshift @{$_[3]->children}, $_[2];
+            push @{$_[1]}, $_[3];
+            $_[1];
         }
     | #empty { []; }
 ;
 
 InterfaceMemberDecl:
-        InterfaceMethodOrFieldDecl
+        InterfaceMethodDecl { $_[1] }
 ;
 
-InterfaceMethodOrFieldDecl:
-        Type Identifier InterfaceMethodOrFieldRest
+InterfaceMethodDecl:
+        ReturnType Identifier FormalParameters ThrowsClause SC_TK {
+            Parse::Java::Method->new({
+                children => [@_[1, 2, 3, 4, 5]]
+            });
+        }
 ;
 
-InterfaceMethodOfFieldRest:
-        ConstantDeclaratorsRest SC_TK
-    |   InterfaceMethodDeclaratorRest
-;
-
-InterfaceMethodDeclaratorRest:
-        FormalParameters 
+ThrowsClause:
+        THROWS_TK QualifiedIdentifiers
+    |   #empty
 ;
 
 VariableDeclaratorId:

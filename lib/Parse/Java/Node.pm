@@ -19,6 +19,11 @@ sub new {
 
 	my $self = $pkg->SUPER::new(@_);
 	$self->children([]) if ref $self->children ne 'ARRAY';
+	
+	# Undefined elements in our children causes problem with
+	# stringification
+	@{$self->children} = grep defined, @{$self->children};
+	
 	return $self;
 }
 

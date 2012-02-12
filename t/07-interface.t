@@ -21,9 +21,14 @@ isa_ok($ast->children->[0], "Parse::Java::Modifiers");
 
 $ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
 interface Test <K> extends List, Queue<K> {
-    public void test();
 }
 __END_OF_JAVA__
 
-diag $ast;
-#isa_ok($ast, "Parse::Java::Interface");
+$ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
+interface Foo {
+    public void bar();
+    void quax();
+}
+__END_OF_JAVA__
+isa_ok($ast, "Parse::Java::Interface");
+is (scalar $ast->methods, 2);
