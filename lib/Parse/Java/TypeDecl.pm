@@ -12,7 +12,7 @@ sub modifiers {
 }
 
 sub body {
-    shift->first_child_of_type("Parse::Java::InterfaceBody");
+    shift->first_child_of_type("Parse::Java::TypeBody");
 }
 
 1;

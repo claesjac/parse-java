@@ -24,11 +24,12 @@ interface Test <K> extends List, Queue<K> {
 }
 __END_OF_JAVA__
 
-$ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
+my $ast = Parse::Java->parse_string(<<__END_OF_JAVA__);
 interface Foo {
     public void bar();
-    void quax();
+    void quax() throws This, java.lang.RuntimeException;
 }
 __END_OF_JAVA__
 isa_ok($ast, "Parse::Java::Interface");
 is (scalar $ast->methods, 2);
+is ($ast->method(0)->identifier->to_string, "bar");

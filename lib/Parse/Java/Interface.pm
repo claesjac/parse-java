@@ -6,7 +6,13 @@ use warnings;
 use base qw(Parse::Java::TypeDecl);
 
 sub methods {
-    shift->first_child_of_type("Parse::Java::InterfaceBody")->children_with({isa => "Parse::Java::Method"});
+    shift->body->children_with({isa => "Parse::Java::Method"});
+}
+
+sub method {
+    my ($self, $idx) = @_;
+    my @methods = $self->body->children_with({isa => "Parse::Java::Method"});
+    return $methods[$idx];
 }
 1;
 __END__
