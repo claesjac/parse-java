@@ -241,7 +241,8 @@ FormalParameters:
 ;
 
 FormalParameter:
-        FINAL_TK Type VariableDeclaratorId { 
+        MODIFIER_TK Type VariableDeclaratorId { 
+            $_[0]->YYAbort unless $_[1]->value eq "final";
             my $modifier = Parse::Java::Modifiers->new({
                 children => [$_[1]]
             }); 

@@ -31,3 +31,9 @@ is($ast->count, 1, "One arguments");
 is($ast->parameter(0)->type->dimensions, 1);
 is($ast->parameter(0)->type->to_string, "Object...");
 ok($ast->parameter(0)->type->vargs);
+
+$ast = Parse::Java->parse_string("(final HashMap a)");
+isa_ok($ast, "Parse::Java::Parameters");
+is($ast->count, 1, "One arguments");
+is($ast->parameter(0)->modifiers->to_string, "final");
+is($ast->parameter(0)->type->to_string, "HashMap");
