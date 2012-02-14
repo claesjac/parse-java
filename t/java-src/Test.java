@@ -4,7 +4,10 @@
 //import java.lang.Math;
 //import static org.junit.Assert.*;
 
-import mail;
-
 class Test {
+    public void main(String[] args) {
+        FOO: {
+            
+        }
+    }
 }
