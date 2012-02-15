@@ -4,10 +4,8 @@
 //import java.lang.Math;
 //import static org.junit.Assert.*;
 
-class Test {
-    public void main(String[] args) {
-        FOO: {
-            
-        }
+public class Test<K> {
+    class Foo<Y> {
+        
     }
 }
